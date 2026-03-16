@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+body {
+  background: #0a0a0a;
+  color: #ededed;
+}
+
+.action-btn {
+  position: relative;
+}
+
+.action-btn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 1px;
+  background: currentColor;
+  transition: width 0.25s ease;
+}
+
+.action-btn:hover:not(:disabled)::after {
+  width: 100%;
+}
+
+.secret-input {
+  color: transparent;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+  text-indent: 6px;
+}
+
+.secret-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  text-shadow: none;
+}

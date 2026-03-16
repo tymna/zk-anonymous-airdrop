@@ -20,6 +20,7 @@ contract IntegrationTests is Test {
     IERC20 token;
     IVerifier verifier;
     IERC5564Announcer announcer;
+    address relayer;
 
     uint256 constant TOTAL_SUPPLY = 1000000 * 1e18;
 
@@ -29,7 +30,8 @@ contract IntegrationTests is Test {
         token = IERC20(new ERC20Mock());
         verifier = IVerifier(new HonkVerifier());
         announcer = IERC5564Announcer(new ERC5564AnnouncerMock());
-        airdrop = new AnonymousAirdrop(token, TOTAL_SUPPLY, merkleRoot, verifier, announcer);
+        relayer = makeAddr("relayer");
+        airdrop = new AnonymousAirdrop(token, TOTAL_SUPPLY, merkleRoot, verifier, announcer, relayer);
     }
 
     function test_initial() public view {
@@ -72,7 +74,6 @@ contract IntegrationTests is Test {
         uint256 contractBalBefore = token.balanceOf(address(airdrop));
 
         // relayer submits on-chain — msg.sender is relayer, not the eligible user
-        address relayer = makeAddr("relayer");
         console.log("--- Relayer submits on-chain ---");
         console.log("Relayer:", relayer);
 
@@ -116,8 +117,10 @@ contract IntegrationTests is Test {
         bytes32 nullifierHash = publicInputs[1];
         uint256 amount = uint256(publicInputs[2]);
 
+        vm.prank(relayer);
         airdrop.claim(proof, nullifierHash, amount, stealthAddress, ephemeralPubKey, viewTag);
 
+        vm.prank(relayer);
         vm.expectRevert(IAnonymousAirdrop.AlreadyClaimed.selector);
         airdrop.claim(proof, nullifierHash, amount, stealthAddress, ephemeralPubKey, viewTag);
     }
@@ -142,6 +145,7 @@ contract IntegrationTests is Test {
         bytes32 nullifierHash = publicInputs[1];
         uint256 tamperedAmount = uint256(publicInputs[2]) + 1 ether;
 
+        vm.prank(relayer);
         vm.expectRevert();
         airdrop.claim(proof, nullifierHash, tamperedAmount, stealthAddress, ephemeralPubKey, viewTag);
     }
@@ -162,6 +166,7 @@ contract IntegrationTests is Test {
         uint256 amount = uint256(publicInputs[2]);
         address tamperedStealth = makeAddr("attacker");
 
+        vm.prank(relayer);
         vm.expectRevert();
         airdrop.claim(proof, nullifierHash, amount, tamperedStealth, ephemeralPubKey, viewTag);
     }
@@ -185,6 +190,7 @@ contract IntegrationTests is Test {
 
         proof[proof.length - 1] = proof[proof.length - 1] ^ 0xff;
 
+        vm.prank(relayer);
         vm.expectRevert();
         airdrop.claim(proof, publicInputs[1], uint256(publicInputs[2]), stealthAddress, ephemeralPubKey, viewTag);
     }
@@ -198,11 +204,37 @@ contract IntegrationTests is Test {
         return newArr;
     }
 
+    function test_revert_Unauthorized() public {
+        string[] memory inputs = new string[](3);
+        inputs[0] = "npx";
+        inputs[1] = "tsx";
+        inputs[2] = "js-scripts/e2e-claim-helper.ts";
+        inputs = _appendArg(inputs, "0");
+
+        bytes memory result = vm.ffi(inputs);
+
+        (
+            bytes memory proof,
+            bytes32[] memory publicInputs,
+            address stealthAddress,
+            bytes memory ephemeralPubKey,
+            bytes1 viewTag
+        ) = abi.decode(result, (bytes, bytes32[], address, bytes, bytes1));
+
+        bytes32 nullifierHash = publicInputs[1];
+        uint256 amount = uint256(publicInputs[2]);
+
+        address notRelayer = makeAddr("notRelayer");
+        vm.prank(notRelayer);
+        vm.expectRevert(IAnonymousAirdrop.Unauthorized.selector);
+        airdrop.claim(proof, nullifierHash, amount, stealthAddress, ephemeralPubKey, viewTag);
+    }
+
     function test_deployScript() public {
         DeployAirdrop deployer = new DeployAirdrop();
         (AnonymousAirdrop airdropInstance, HelperConfig config) = deployer.deployAirdrop();
 
-        (address tokenAddr, uint256 totalSupply, bytes32 merkleRoot, address verifierAddr, address announcerAddr) =
+        (address tokenAddr, uint256 totalSupply, bytes32 merkleRoot, address verifierAddr, address announcerAddr,) =
             config.activeNetworkConfig();
 
         assertEq(address(airdropInstance) != address(0), true, "Airdrop contract should be deployed");

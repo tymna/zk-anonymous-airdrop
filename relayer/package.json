@@ -1,0 +1,13 @@
+{
+  "name": "zk-airdrop-relayer",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "viem": "^2.0.0"
+  }
+}

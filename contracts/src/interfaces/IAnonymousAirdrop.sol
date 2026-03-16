@@ -7,6 +7,7 @@ interface IAnonymousAirdrop {
     error InputNotInField();
     error InvalidProof();
     error TransferFailed();
+    error Unauthorized();
     error ZeroParameters();
 
     // ---- EVENTS ---- //

@@ -1,36 +1,73 @@
-# Anonymous Airdrop
+# ZK Anonymous Airdrop
 
-Claim airdrop tokens without revealing which eligible address you are. A ZK proof proves Merkle tree membership, and tokens land at a fresh stealth address — nothing links the claim back to the original address.
+Claim airdrop tokens without revealing which address is yours. A ZK proof proves you're in the eligibility list, a relayer submits it so you never touch the chain, and tokens land at a fresh stealth address — nothing on-chain connects the two.
 
-**Noir** · **Solidity** · **Foundry** · **UltraHonk** · **ERC-5564/6538**
+**Noir** · **Solidity** · **Foundry** · **Next.js** · **Express** · **ERC-5564**
 
-## How It Works
+## Why it's anonymous
 
-1. Each eligible address gets a secret during tree construction — knowing it lets you prove membership
-2. User generates a one-time stealth address (ECDH) with no on-chain link to their identity
-3. ZK proof bundles the secret + stealth address: proves eligibility and locks tokens to the stealth address
-4. A relayer submits the proof on-chain — the user never touches the chain
+A normal airdrop: you call `claim()` from your wallet → everyone sees which address claimed and where tokens went.
 
-## Highlights
+Here, three things break that link:
 
-**Circuit (Noir)** — Poseidon2 Merkle proof + nullifier, recipient bound as public input, stealth address receiver remains private and bound to secret
+1. **ZK proof** — proves you're eligible without revealing which address you are
+2. **Relayer** — submits the transaction for you, so your address never appears on-chain
+3. **Stealth address** — tokens go to a fresh one-time address generated right here in the app, that only you can control
 
-**On-chain (Solidity)** — UltraHonk verifier, nullifier tracking, ERC-5564 announcements with viewTag filtering
+An observer sees: *"relayer called claim → tokens went to some address."* They can't tell who's behind it.
 
-**Testing (Foundry)** — E2E via FFI (TS generates proof + stealth address), fork tests on Sepolia against real ERC-5564 Announcer, replay/tamper coverage
+## How to claim
 
-## Standards
+![alt text](screenshots/image.png)
 
-- [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) — Stealth Address Announcements (emit events so scanners can find payments)
-- [ERC-6538](https://eips.ethereum.org/EIPS/eip-6538) — Stealth Meta-Address Registry (publish meta-address for stealth address generation)
+1. **Generate stealth keys** — enter any two private keys (spend + view). These create a stealth meta-address
+![alt text](screenshots/image1.png)
+2. **Derive stealth address** — a one-time address is computed from your keys. This is where tokens will go
+![alt text](screenshots/image2.png)
+3. **Enter your secret** — the nullifier secret you received when added to the eligibility list. This generates a ZK proof in your browser
+![alt text](screenshots/image3.png)
+4. **Submit** — the proof is sent to the relayer, which calls the contract on your behalf. Tokens arrive at the stealth address
+![alt text](screenshots/image4.png)
+
+A [claim file](screenshots/claim-0x8e17Dbb6.json) is downloaded automatically — it contains everything you need, including the stealth private key to access the tokens later. See the:
+[full flow](screenshots/full-flow.png),
+[diagram](diagram.excalidraw) for how it all fits together.
+
+## Stack
+
+**Circuit (Noir)** — 20-level Poseidon2 Merkle proof + nullifier, runs in-browser via Barretenberg WASM
+
+**On-chain (Solidity)** — UltraHonk verifier, nullifier tracking, ERC-5564 stealth announcements
+
+**Frontend (Next.js 16)** — blurred secret inputs, claim file download with stealth private key
+
+**Relayer (Express)** — receives proof over HTTP, submits `claim()` with its own wallet
+
+**Testing (Foundry)** — real proof generation via FFI, fork tests against Sepolia's ERC-5564 Announcer
+
+## Deployed on Sepolia
+
+| Contract | Address |
+|----------|---------|
+| Airdrop | `0x27Ec87deF4296104f8e4546A2B520fc111292eDA` |
+| Token | `0xD89BA48B8855CAbE9E81B48D9c7247C0ea977fB9` |
+| Verifier | `0x662530cC219255dc66772B37B8228EE78012aA14` |
+| Announcer | `0x55649E01B5Df198D18D95b5cc5051630cfD45564` |
+| Relayer | `0x82f31E32512d8E62d1898981e230752D73A08322` |
+
+Live tx: [`0x5b94a976...`](https://sepolia.etherscan.io/tx/0x5b94a976cf81767ed3ee1c80106a60081d979c0c8c2e013c109572afb5e3e7ae)
 
 ## Build
 
 ```bash
-cd circuits && nargo compile
+# Contracts
 cd contracts && forge build && forge test
+
+# Relayer — needs .env with RELAYER_PRIVATE_KEY, AIRDROP_ADDRESS, RPC_URL
+cd relayer && npm install && node index.js
+
+# Frontend
+cd zk-airdrop-ui && npm install && npm run dev
 ```
 
-> **Note:** Tests require `ffi = true` in `foundry.toml`. Fork tests need `RPC_URL` (Ethereum Mainnet).
-
-See [`diagram.excalidraw`](./diagram.excalidraw) for the full flow.
+> **Note:** Tests require `ffi = true` in `foundry.toml`. Relayer runs on port 3001 by default.

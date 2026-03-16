@@ -6,13 +6,9 @@ const NUM_RANDOM = 93;
 const NUM_PROOFS = 10;
 
 const KNOWN_ELIGIBLE: { address: string; amount: number }[] = [
-  { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", amount: 100 },
-  { address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", amount: 100 },
-  { address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", amount: 100 },
-  { address: "0x90F79bf6EB2c4f870365E785982E1f101E93b906", amount: 100 },
-  { address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", amount: 100 },
-  { address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", amount: 100 },
-  { address: "0x7eF78e0ef51A18Ce23269707CA3A256b69F884c1", amount: 100 },
+  { address: "0x2a3b257b4641bC307EEB8463E9975d17c0D5f656", amount: 1000 },
+  { address: "0xCd926c7cfC17adF27Cf8DE5Ffe1079dEb8EEa908", amount: 1000 },
+  { address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", amount: 1000 },
 ];
 
 // ── Poseidon2 helpers ──────────────────────────────────────────────

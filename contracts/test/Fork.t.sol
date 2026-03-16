@@ -16,6 +16,7 @@ contract ForkTest is Test {
     AnonymousAirdrop airdrop;
     IERC20 token;
     IVerifier verifier;
+    address relayer;
 
     /// @dev Real ERC-5564 Announcer on Sepolia
     address constant ANNOUNCER = 0x55649E01B5Df198D18D95b5cc5051630cfD45564;
@@ -30,10 +31,11 @@ contract ForkTest is Test {
 
         token = IERC20(new ERC20Mock());
         verifier = IVerifier(new HonkVerifier());
+        relayer = makeAddr("relayer");
 
         bytes32 merkleRoot = TreeData.loadRoot();
 
-        airdrop = new AnonymousAirdrop(token, TOTAL_SUPPLY, merkleRoot, verifier, IERC5564Announcer(ANNOUNCER));
+        airdrop = new AnonymousAirdrop(token, TOTAL_SUPPLY, merkleRoot, verifier, IERC5564Announcer(ANNOUNCER), relayer);
     }
 
     struct ClaimData {
@@ -75,7 +77,6 @@ contract ForkTest is Test {
     function test_claimFromBundle_emitsClaimed() public {
         ClaimData memory c = _loadClaimData();
         uint256 contractBalBefore = token.balanceOf(address(airdrop));
-        address relayer = makeAddr("relayer");
 
         vm.expectEmit(true, true, false, true);
         emit IAnonymousAirdrop.Claimed(c.nullifierHash, c.stealthAddress, c.amount);
@@ -91,8 +92,6 @@ contract ForkTest is Test {
 
     function test_claimFromBundle_emitsAnnouncement() public {
         ClaimData memory c = _loadClaimData();
-        address relayer = makeAddr("relayer");
-
         vm.expectEmit(true, true, true, true, ANNOUNCER);
         bytes memory expectedMetadata = abi.encodePacked(c.viewTag, bytes4(0xa9059cbb), address(token), c.amount);
         emit IERC5564Announcer.Announcement(1, c.stealthAddress, address(airdrop), c.ephemeralPubKey, expectedMetadata);
@@ -104,7 +103,6 @@ contract ForkTest is Test {
     /// Simulates stealth address scanner: filter logs → parse viewTag → decode metadata
     function test_claimFromBundle_announcementIsIndexable() public {
         ClaimData memory c = _loadClaimData();
-        address relayer = makeAddr("relayer");
 
         vm.recordLogs();
 

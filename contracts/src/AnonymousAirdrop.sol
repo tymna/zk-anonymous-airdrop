@@ -25,6 +25,13 @@ contract AnonymousAirdrop is IAnonymousAirdrop {
 
     IVerifier private immutable i_verifier;
     IERC5564Announcer private immutable i_announcer;
+    address private immutable i_relayer;
+
+    // ---- MODIFIERS ---- //
+    modifier onlyRelayer() {
+        if (msg.sender != i_relayer) revert Unauthorized();
+        _;
+    }
 
     // ---- FUNCTIONS ---- //
     constructor(
@@ -32,11 +39,12 @@ contract AnonymousAirdrop is IAnonymousAirdrop {
         uint256 totalSupply,
         bytes32 merkleRoot,
         IVerifier verifier,
-        IERC5564Announcer announcer
+        IERC5564Announcer announcer,
+        address relayer
     ) {
         if (
             address(token) == address(0) || totalSupply == 0 || merkleRoot == bytes32(0)
-                || address(verifier) == address(0)
+                || address(verifier) == address(0) || relayer == address(0)
         ) {
             revert ZeroParameters();
         }
@@ -47,6 +55,7 @@ contract AnonymousAirdrop is IAnonymousAirdrop {
         i_merkleRoot = merkleRoot;
         i_verifier = IVerifier(verifier);
         i_announcer = IERC5564Announcer(announcer);
+        i_relayer = relayer;
 
         token.mint(address(this), totalSupply);
     }
@@ -58,7 +67,7 @@ contract AnonymousAirdrop is IAnonymousAirdrop {
         address stealthAddress,
         bytes calldata ephemeralPubKey,
         bytes1 viewTag
-    ) external {
+    ) external onlyRelayer {
         if (uint256(nullifierHash) >= BN254_MODULUS) revert InputNotInField();
         if (amount >= BN254_MODULUS) revert InputNotInField();
         if (s_nullifierHashes[nullifierHash]) revert AlreadyClaimed();
@@ -110,6 +119,10 @@ contract AnonymousAirdrop is IAnonymousAirdrop {
 
     function getAnnouncer() external view returns (address) {
         return address(i_announcer);
+    }
+
+    function getRelayer() external view returns (address) {
+        return i_relayer;
     }
 
     function hasClaimed(bytes32 nullifierHash) external view returns (bool) {
