@@ -67,7 +67,7 @@ cd contracts && forge build && forge test
 cd relayer && npm install && node index.js
 
 # Frontend
-cd zk-airdrop-ui && npm install && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
 > **Note:** Tests require `ffi = true` in `foundry.toml`. Relayer runs on port 3001 by default.
